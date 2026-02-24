@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Timer, RefreshCw, Play, Info, AlertCircle, ChevronRight } from 'lucide-react';
+import { Trophy, Timer, RefreshCw, Play, Info, AlertCircle, Languages } from 'lucide-react';
 
 // --- Constants & Types ---
 
@@ -13,6 +13,8 @@ const INITIAL_TIME = 30;
 const INITIAL_GRID_SIZE = 2;
 const MAX_GRID_SIZE = 8;
 const BASE_DIFFERENCE = 40; // Initial color difference in HSL lightness/saturation
+
+type Language = 'en' | 'zh';
 
 interface GameState {
   score: number;
@@ -28,6 +30,49 @@ interface Color {
   l: number;
 }
 
+const translations = {
+  en: {
+    title: 'Chromatic Vision',
+    subtitle: 'Art Student Sensitivity Challenge',
+    score: 'Score',
+    time: 'Time',
+    ready: 'Ready to test your eyes?',
+    idleDesc: 'Find the block with the slightly different shade. It gets harder as you score higher.',
+    start: 'Start Challenge',
+    timesUp: "Time's Up!",
+    finalScore: 'Final Score',
+    tryAgain: 'Try Again',
+    proTip: 'Pro Tip',
+    proTipContent: 'Art students usually score above 30. Focus on the subtle shifts in saturation rather than just brightness.',
+    diffCurve: 'Difficulty Curve',
+    diffCurveContent: 'The color delta (ΔE) decreases logarithmically. By level 20, the difference is less than 2% in lightness.',
+    gridScaling: 'Grid Scaling',
+    gridScalingContent: 'Starting at 2x2, the grid expands up to 8x8 as you progress, increasing the cognitive load of visual search.',
+    feedback: 'Visual Feedback',
+    feedbackContent: 'Correct choices grant +1s bonus. Incorrect choices penalize -3s. Precision is more important than speed.',
+  },
+  zh: {
+    title: '色彩视觉',
+    subtitle: '艺术生色彩敏感度挑战',
+    score: '得分',
+    time: '时间',
+    ready: '准备好测试你的眼力了吗？',
+    idleDesc: '找出那个颜色略有不同的色块。得分越高，难度越大。',
+    start: '开始挑战',
+    timesUp: '时间到！',
+    finalScore: '最终得分',
+    tryAgain: '再试一次',
+    proTip: '专业贴士',
+    proTipContent: '艺术生通常能得分30以上。专注于饱和度的细微变化，而不仅仅是亮度。',
+    diffCurve: '难度曲线',
+    diffCurveContent: '色彩差异 (ΔE) 呈对数级递减。到第20关时，亮度差异不足2%。',
+    gridScaling: '网格缩放',
+    gridScalingContent: '从2x2开始，网格随进度扩展至8x8，增加了视觉搜索的认知负荷。',
+    feedback: '视觉反馈',
+    feedbackContent: '选择正确奖励+1秒。选择错误扣除3秒。精准度比速度更重要。',
+  }
+};
+
 // --- Helper Functions ---
 
 const generateRandomColor = (): Color => ({
@@ -37,11 +82,7 @@ const generateRandomColor = (): Color => ({
 });
 
 const getDifferentColor = (base: Color, level: number): Color => {
-  // Difficulty curve: difference decreases as level increases
-  // We use a logarithmic-like decay for the difference
   const diff = Math.max(2, BASE_DIFFERENCE / (1 + Math.log2(level + 1) * 0.8));
-  
-  // Randomly decide whether to change lightness or saturation
   const changeLightness = Math.random() > 0.5;
   
   return {
@@ -56,6 +97,7 @@ const colorToCss = (c: Color) => `hsl(${c.h}, ${c.s}%, ${c.l}%)`;
 // --- Components ---
 
 export default function App() {
+  const [lang, setLang] = useState<Language>('zh');
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     timeLeft: INITIAL_TIME,
@@ -71,12 +113,11 @@ export default function App() {
   });
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const t = translations[lang];
 
   const generateLevel = useCallback((level: number) => {
     const base = generateRandomColor();
     const diff = getDifferentColor(base, level);
-    
-    // Grid size increases every few levels
     const newGridSize = Math.min(MAX_GRID_SIZE, INITIAL_GRID_SIZE + Math.floor(level / 3));
     const diffIndex = Math.floor(Math.random() * (newGridSize * newGridSize));
 
@@ -99,17 +140,15 @@ export default function App() {
     if (gameState.status !== 'playing') return;
 
     if (index === colors.diffIndex) {
-      // Correct!
       const nextLevel = gameState.level + 1;
       setGameState(prev => ({
         ...prev,
         score: prev.score + 1,
         level: nextLevel,
-        timeLeft: prev.timeLeft + 1, // Bonus time
+        timeLeft: prev.timeLeft + 1,
       }));
       generateLevel(nextLevel);
     } else {
-      // Wrong! Penalty
       setGameState(prev => ({
         ...prev,
         timeLeft: Math.max(0, prev.timeLeft - 3),
@@ -140,24 +179,35 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-[#141414] font-sans selection:bg-[#141414] selection:text-[#F5F5F0] p-4 md:p-8 flex flex-col items-center justify-center">
       {/* Header Section */}
-      <header className="w-full max-w-2xl mb-8 flex flex-col md:flex-row justify-between items-end gap-4">
+      <header className="w-full max-w-2xl mb-8 flex flex-col md:flex-row justify-between items-end gap-4 relative">
         <div className="flex flex-col">
           <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none mb-2">
-            Chromatic<br />Vision
+            {lang === 'en' ? (
+              <>Chromatic<br />Vision</>
+            ) : (
+              t.title
+            )}
           </h1>
-          <p className="text-sm font-mono uppercase opacity-60">Art Student Sensitivity Challenge</p>
+          <p className="text-sm font-mono uppercase opacity-60">{t.subtitle}</p>
         </div>
         
         <div className="flex gap-6 items-center">
+          <button 
+            onClick={() => setLang(l => l === 'en' ? 'zh' : 'en')}
+            className="p-2 border border-[#141414] hover:bg-[#141414] hover:text-[#F5F5F0] transition-colors rounded-sm"
+            title="Switch Language"
+          >
+            <Languages size={20} />
+          </button>
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-mono uppercase opacity-50 flex items-center gap-1">
-              <Trophy size={10} /> Score
+              <Trophy size={10} /> {t.score}
             </span>
             <span className="text-3xl font-black leading-none">{gameState.score}</span>
           </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-mono uppercase opacity-50 flex items-center gap-1">
-              <Timer size={10} /> Time
+              <Timer size={10} /> {t.time}
             </span>
             <span className={`text-3xl font-black leading-none ${gameState.timeLeft <= 5 ? 'text-red-500 animate-pulse' : ''}`}>
               {gameState.timeLeft}s
@@ -180,15 +230,15 @@ export default function App() {
               <div className="mb-6 p-4 border border-dashed border-[#141414] rounded-full animate-spin-slow">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-red-400 via-green-400 to-blue-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Ready to test your eyes?</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.ready}</h2>
               <p className="text-sm opacity-70 mb-8 max-w-xs">
-                Find the block with the slightly different shade. It gets harder as you score higher.
+                {t.idleDesc}
               </p>
               <button 
                 onClick={startGame}
                 className="group relative px-8 py-4 bg-[#141414] text-[#F5F5F0] font-bold uppercase tracking-widest hover:bg-[#2a2a2a] transition-colors flex items-center gap-2"
               >
-                Start Challenge <Play size={18} />
+                {t.start} <Play size={18} />
               </button>
             </motion.div>
           )}
@@ -227,9 +277,9 @@ export default function App() {
               className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-white/95 backdrop-blur-sm"
             >
               <AlertCircle size={48} className="mb-4 text-red-500" />
-              <h2 className="text-4xl font-black uppercase mb-2">Time's Up!</h2>
-              <div className="mb-8">
-                <p className="text-sm font-mono uppercase opacity-60">Final Score</p>
+              <h2 className="text-4xl font-black uppercase mb-2">{t.timesUp}</h2>
+              <div className="mb-8 text-center">
+                <p className="text-sm font-mono uppercase opacity-60">{t.finalScore}</p>
                 <p className="text-6xl font-black">{gameState.score}</p>
               </div>
               
@@ -238,14 +288,14 @@ export default function App() {
                   onClick={startGame}
                   className="w-full py-4 bg-[#141414] text-[#F5F5F0] font-bold uppercase tracking-widest hover:bg-[#2a2a2a] transition-colors flex items-center justify-center gap-2"
                 >
-                  Try Again <RefreshCw size={18} />
+                  {t.tryAgain} <RefreshCw size={18} />
                 </button>
                 <div className="p-4 border border-[#141414] text-left">
                   <p className="text-[10px] font-mono uppercase font-bold mb-1 flex items-center gap-1">
-                    <Info size={10} /> Pro Tip
+                    <Info size={10} /> {t.proTip}
                   </p>
                   <p className="text-xs opacity-70">
-                    Art students usually score above 30. Focus on the subtle shifts in saturation rather than just brightness.
+                    {t.proTipContent}
                   </p>
                 </div>
               </div>
@@ -258,26 +308,26 @@ export default function App() {
       <footer className="w-full max-w-2xl mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="border-t border-[#141414] pt-4">
           <h3 className="text-xs font-mono uppercase font-bold mb-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full" /> Difficulty Curve
+            <div className="w-2 h-2 bg-red-500 rounded-full" /> {t.diffCurve}
           </h3>
           <p className="text-xs opacity-60 leading-relaxed">
-            The color delta (ΔE) decreases logarithmically. By level 20, the difference is less than 2% in lightness.
+            {t.diffCurveContent}
           </p>
         </div>
         <div className="border-t border-[#141414] pt-4">
           <h3 className="text-xs font-mono uppercase font-bold mb-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full" /> Grid Scaling
+            <div className="w-2 h-2 bg-green-500 rounded-full" /> {t.gridScaling}
           </h3>
           <p className="text-xs opacity-60 leading-relaxed">
-            Starting at 2x2, the grid expands up to 8x8 as you progress, increasing the cognitive load of visual search.
+            {t.gridScalingContent}
           </p>
         </div>
         <div className="border-t border-[#141414] pt-4">
           <h3 className="text-xs font-mono uppercase font-bold mb-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full" /> Visual Feedback
+            <div className="w-2 h-2 bg-blue-500 rounded-full" /> {t.feedback}
           </h3>
           <p className="text-xs opacity-60 leading-relaxed">
-            Correct choices grant +1s bonus. Incorrect choices penalize -3s. Precision is more important than speed.
+            {t.feedbackContent}
           </p>
         </div>
       </footer>
